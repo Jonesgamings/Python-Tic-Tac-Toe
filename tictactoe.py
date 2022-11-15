@@ -1,17 +1,21 @@
 import pygame
 
+pygame.font.init()
+pygame.init()
+
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 
 class Button:
 
-    def __init__(self, rect: pygame.Rect, text) -> None:
+    def __init__(self, rect: pygame.Rect, text, font) -> None:
         self.rect = rect
         self.pos = (rect.x, rect.y)
         self.width = rect.width
         self.height = rect.height
         self.colour = (200, 200, 200)
         self.text = text
+        self.font = font
 
     def highlighted(self, pos):
         if self.rect.collidepoint(pos):
@@ -21,7 +25,12 @@ class Button:
             self.colour = (200, 200, 200)
 
     def draw(self, screen):
+        textSurf = self.font.render(self.text, False, BLACK)
+        size = self.font.size(self.text)
+        textPos = (((self.pos[0]) - size[0] / 2) + self.width / 2, ((self.pos[1]) - size[1] / 2) + self.height / 2)
         pygame.draw.rect(screen.screen, self.colour, self.rect)
+        screen.screen.blit(textSurf, textPos)
+
 
     def checkClick(self, event):
         if self.rect.collidepoint(event.pos):
@@ -48,11 +57,15 @@ class Tile:
         return 0
 
     def draw(self, screen):
-        if not self.clicked:
-            pygame.draw.rect(screen, BLACK, self.rect, 3)
+        if self.team:
+            if self.team == "PLAYER" or self.team == "P1":
+                pygame.draw.line(screen, BLACK, self.pos, (self.pos[0] + self.width, self.pos[1] + self.height), 3)
+                pygame.draw.line(screen, BLACK, (self.pos[0], self.pos[1] + self.height), (self.pos[0] + self.width, self.pos[1]), 3)
 
-        else:
-            pygame.draw.rect(screen, BLACK, self.rect)
+            elif self.team == "AI" or self.team == "P2":
+                pygame.draw.circle(screen, BLACK, (self.pos[0] + self.width / 2, self.pos[1] + self.height / 2), self.width / 2, 3)
+
+        pygame.draw.rect(screen, BLACK, self.rect, 3)
 
 class BoardWindow:
 
@@ -91,6 +104,12 @@ class BoardWindow:
         self.gameType = type_
         self.currentTeam = 1
 
+        if type_ == BoardWindow.AI:
+            self.currentTeam = "PLAYER"
+
+        elif type_ == BoardWindow.PLAYER:
+            self.currentTeam = "P1"
+
     def endGame(self):
         self.visible = False
         self.gameType = None
@@ -105,7 +124,8 @@ class BoardWindow:
 
     def doAIMove(self):
         if self.currentTeam == "AI":
-            self.switchTeams()
+            #self.switchTeams()
+            pass
 
     def update(self):
         self.checkForWin()
@@ -115,16 +135,20 @@ class BoardWindow:
 
     def switchTeams(self):
         if self.currentTeam == "P1":
-            self.currentTeam == "P2"
+            self.currentTeam = "P2"
+            return
 
         elif self.currentTeam == "P2":
-            self.currentTeam == "P1"
+            self.currentTeam = "P1"
+            return
 
         elif self.currentTeam == "AI":
-            self.currentTeam == "PLAYER"
+            self.currentTeam = "PLAYER"
+            return
 
         elif self.currentTeam == "PLAYER":
-            self.currentTeam == "AI"
+            self.currentTeam = "AI"
+            return
 
     def event(self, event):
         switch = 0
@@ -140,8 +164,16 @@ class MainMenu:
     def __init__(self, screen) -> None:
         self.screen: Screen = screen
         self.visible = True
-        self.AIButton = Button(pygame.Rect(100, 100, 100, 100), "AI")
-        self.PlayerButton = Button(pygame.Rect(250, 100, 100, 100), "PLAYER")
+        self.createButtons()
+
+    def createButtons(self):
+
+        width = self.screen.width / 6
+        height = self.screen.height / 6
+        font = pygame.font.SysFont("Comic Sans MS", 30)
+
+        self.AIButton = Button(pygame.Rect(width, height * 2, width, height), "AI", font)
+        self.PlayerButton = Button(pygame.Rect(width * 4, height * 2, width, height), "PLAYER", font)
 
     def update(self):
         mousePos = pygame.mouse.get_pos()
