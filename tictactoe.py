@@ -3,6 +3,30 @@ import pygame
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 
+class Button:
+
+    def __init__(self, rect: pygame.Rect, text) -> None:
+        self.rect = rect
+        self.pos = (rect.x, rect.y)
+        self.width = rect.width
+        self.height = rect.height
+        self.colour = (200, 200, 200)
+        self.text = text
+
+    def highlighted(self, pos):
+        if self.rect.collidepoint(pos):
+            self.colour = (100, 100, 100)
+
+        else:
+            self.colour = (200, 200, 200)
+
+    def draw(self, screen):
+        pygame.draw.rect(screen.screen, self.colour, self.rect)
+
+    def checkClick(self, event):
+        if self.rect.collidepoint(event.pos):
+            return True
+
 class Tile:
     
     def __init__(self, rect: pygame.Rect) -> None:
@@ -14,10 +38,14 @@ class Tile:
         self.clicked = False
 
     def checkClick(self, event, team):
-        if self.rect.collidepoint(event.pos):
-            if not self.clicked:
-                self.clicked = True
-                self.team = team
+        if team != "AI":
+            if self.rect.collidepoint(event.pos):
+                if not self.clicked:
+                    self.clicked = True
+                    self.team = team
+                    return 1
+
+        return 0
 
     def draw(self, screen):
         if not self.clicked:
@@ -33,7 +61,7 @@ class BoardWindow:
     
     def __init__(self, screen, size, offset) -> None:
         self.screen: Screen = screen
-        self.visible = True
+        self.visible = False
         self.size = size
         self.tiles = {}
         self.gridX = 0
@@ -72,27 +100,65 @@ class BoardWindow:
         for tile in self.tiles.values():
             tile.draw(self.screen.screen)
 
-    def update(self):
+    def checkForWin(self):
         pass
 
+    def doAIMove(self):
+        if self.currentTeam == "AI":
+            self.switchTeams()
+
+    def update(self):
+        self.checkForWin()
+
+        if self.gameType == BoardWindow.AI:
+            self.doAIMove()
+
+    def switchTeams(self):
+        if self.currentTeam == "P1":
+            self.currentTeam == "P2"
+
+        elif self.currentTeam == "P2":
+            self.currentTeam == "P1"
+
+        elif self.currentTeam == "AI":
+            self.currentTeam == "PLAYER"
+
+        elif self.currentTeam == "PLAYER":
+            self.currentTeam == "AI"
+
     def event(self, event):
+        switch = 0
         if event.type == pygame.MOUSEBUTTONDOWN:
             for tile in self.tiles.values():
-                tile.checkClick(event, self.currentTeam)
+                switch += tile.checkClick(event, self.currentTeam)
+
+        if switch > 0:
+            self.switchTeams()
 
 class MainMenu:
 
     def __init__(self, screen) -> None:
-        self.screen = screen
-        self.visible = False
-        #self.AIButton = pygame.Rect()
-        #self.PlayerButton = pygame.Rect()
+        self.screen: Screen = screen
+        self.visible = True
+        self.AIButton = Button(pygame.Rect(100, 100, 100, 100), "AI")
+        self.PlayerButton = Button(pygame.Rect(250, 100, 100, 100), "PLAYER")
+
+    def update(self):
+        mousePos = pygame.mouse.get_pos()
+        self.AIButton.highlighted(mousePos)
+        self.PlayerButton.highlighted(mousePos)
 
     def draw(self):
-        pass
+        self.AIButton.draw(self.screen)
+        self.PlayerButton.draw(self.screen)
 
     def event(self, event):
-        pass
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if self.AIButton.checkClick(event):
+                self.screen.loadGame(BoardWindow.AI)
+
+            elif self.PlayerButton.checkClick(event):
+                self.screen.loadGame(BoardWindow.PLAYER)
 
 class Screen:
 
@@ -112,6 +178,7 @@ class Screen:
             self.boardWindow.draw()
 
         if self.mainmanu.visible:
+            self.mainmanu.update()
             self.mainmanu.draw()
 
     def sendEvent(self, event):
@@ -129,6 +196,7 @@ class Screen:
         self.boardWindow.endGame()
 
     def loadMenu(self):
+        self.unloadGame()
         self.mainmanu.visible = True
 
     def unloadMenu(self):
