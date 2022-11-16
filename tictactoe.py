@@ -120,6 +120,21 @@ class BoardWindow:
             tile.draw(self.screen.screen)
 
     def checkForWin(self):
+        for y in range(self.size):
+            lastTeam = self.tiles[0, 0]
+            for x in range(self.size):
+                if lastTeam == self.tiles[x, y]:
+                    pass
+
+                else:
+                    lastTeam = None
+                    break
+
+            if lastTeam != None:
+                return lastTeam
+                
+        #CHECK COLUMNS
+        #CHECK DIAGONALS
         pass
 
     def doAIMove(self):
