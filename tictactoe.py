@@ -34,7 +34,9 @@ class Button:
 
     def checkClick(self, event):
         if self.rect.collidepoint(event.pos):
-            return True
+            return 1
+
+        return 0
 
 class Tile:
     
@@ -57,6 +59,7 @@ class Tile:
         return 0
 
     def draw(self, screen):
+        screen = screen.screen
         if self.team:
             if self.team == "PLAYER" or self.team == "P1":
                 pygame.draw.line(screen, BLACK, self.pos, (self.pos[0] + self.width, self.pos[1] + self.height), 3)
@@ -82,8 +85,16 @@ class BoardWindow:
         self.offset = offset
         self.gameType = None
         self.currentTeam = None
-        
+
+        self.createButtons()
         self.generateBlank()
+
+    def createButtons(self):
+        width = self.screen.width / 6
+        height = self.screen.height / 24
+        font = pygame.font.SysFont("Comic Sans MS", 30)
+
+        self.quitButton = Button(pygame.Rect(0, self.screen.height - height, width, height), "QUIT", font)
 
     def generateBlank(self):
 
@@ -92,7 +103,7 @@ class BoardWindow:
 
         for y in range(self.size):
             for x in range(self.size):
-                pos = (y, x)
+                pos = (x, y)
                 realX = self.gridX * x + self.offset
                 realY = self.gridY * y + self.offset
                 rect = pygame.Rect(realX, realY, self.gridX, self.gridY)
@@ -110,32 +121,92 @@ class BoardWindow:
         elif type_ == BoardWindow.PLAYER:
             self.currentTeam = "P1"
 
+        self.generateBlank()
+
     def endGame(self):
         self.visible = False
         self.gameType = None
         self.currentTeam = None
+        self.screen.loadMenu()
+
+    def win(self, team):
+        if team != "DRAW": text = f"{team} WINS"
+        else: text = "DRAW" 
+
+        for tile in self.tiles.values():
+            tile.clicked = True
+        
+        font = pygame.font.SysFont("Comic Sans MS", 30)
+        size = font.size(text)
+        textPos = ((self.screen.width / 2), self.screen.height - size[1] / 2)
+        self.displayText(font, size, text, textPos)
+
+    def displayText(self, font, size, text, pos):
+        textSurf = font.render(text, False, BLACK)
+        textPos = (pos[0] - size[0] / 2, pos[1] - size[1] / 2)
+        self.screen.screen.blit(textSurf, textPos)
 
     def draw(self):
         for tile in self.tiles.values():
-            tile.draw(self.screen.screen)
+            tile.draw(self.screen)
+
+        font = pygame.font.SysFont("Comic Sans MS", 30)
+        size = font.size(self.currentTeam)
+        textPos = (size[0] / 2, size[1] / 2)
+
+        self.displayText(font, size, self.currentTeam, textPos)
+        self.quitButton.draw(self.screen)
 
     def checkForWin(self):
+        diagL = set()
+        diagR = set()
+        countDL = 0
+        countDR = 0
+        GENCOUNT = 0
         for y in range(self.size):
-            lastTeam = self.tiles[0, 0]
+            rows = set()
+            columns = set()
+            countR = 0
+            countC = 0
             for x in range(self.size):
-                if lastTeam == self.tiles[x, y]:
-                    pass
+                teamR = self.tiles[x, y].team
+                teamC = self.tiles[y, x].team
+                if teamR:
+                    rows.add(teamR)
+                    countR += 1
+                    GENCOUNT += 1
 
-                else:
-                    lastTeam = None
-                    break
+                if teamC:
+                    columns.add(teamC)
+                    countC += 1
 
-            if lastTeam != None:
-                return lastTeam
-                
-        #CHECK COLUMNS
-        #CHECK DIAGONALS
-        pass
+                if teamR:
+                    if x == y:
+                        diagL.add(teamR)
+                        countDL += 1
+
+                    if x == self.size - 1 - y:
+                        diagR.add(teamR)
+                        countDR += 1
+
+            if len(rows) == 1:
+                if countR == self.size:
+                    return list(rows)[0]
+
+            if len(columns) == 1:
+                if countC == self.size:
+                    return list(columns)[0]
+
+        if len(diagL) == 1:
+            if countDL == 3:
+                return list(diagL)[0]
+
+        if len(diagR) == 1:
+            if countDR == 3:
+                return list(diagR)[0]
+
+        if GENCOUNT == (self.size * self.size):
+                return "DRAW"
 
     def doAIMove(self):
         if self.currentTeam == "AI":
@@ -143,7 +214,12 @@ class BoardWindow:
             pass
 
     def update(self):
-        self.checkForWin()
+        mousePos = pygame.mouse.get_pos()
+        self.quitButton.highlighted(mousePos)
+
+        team = self.checkForWin()
+        if team:
+            self.win(team)
 
         if self.gameType == BoardWindow.AI:
             self.doAIMove()
@@ -167,12 +243,18 @@ class BoardWindow:
 
     def event(self, event):
         switch = 0
+        endGame = 0
         if event.type == pygame.MOUSEBUTTONDOWN:
             for tile in self.tiles.values():
                 switch += tile.checkClick(event, self.currentTeam)
 
+            endGame += self.quitButton.checkClick(event)
+
         if switch > 0:
             self.switchTeams()
+
+        if endGame > 0:
+            self.endGame()
 
 class MainMenu:
 
@@ -214,7 +296,7 @@ class Screen:
         self.width = width
         self.height = height
         self.screen = pygame.display.set_mode([width, height])
-        self.boardWindow = BoardWindow(self, self.boardSize, 30)
+        self.boardWindow = BoardWindow(self, self.boardSize, 100)
         self.mainmanu = MainMenu(self)
         self.running = False
 
@@ -243,7 +325,6 @@ class Screen:
         self.boardWindow.endGame()
 
     def loadMenu(self):
-        self.unloadGame()
         self.mainmanu.visible = True
 
     def unloadMenu(self):
